@@ -8,6 +8,31 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+.cursor {
+  width: 10px; height: 10px;
+  background: var(--cyan);
+  border-radius: 50%;
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: difference;
+  box-shadow: 0 0 10px var(--cyan), 0 0 20px rgba(0,220,255,0.4);
+  transition: transform 0.1s ease, width 0.2s ease, height 0.2s ease;
+}
+.cursor-ring {
+  width: 38px; height: 38px;
+  border: 1px solid var(--cyan);
+  border-radius: 50%;
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.5;
+  box-shadow: 0 0 8px rgba(0,220,255,0.2);
+  transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+}
+
 :root {
   --bg: #040d1a;
   --surface: #0b1a2e;
@@ -30,9 +55,18 @@ body {
   font-size: 13px;
   line-height: 1.7;
   overflow-x: hidden;
+  cursor: none;
 }
 
-#spectrum-canvas {
+#buzz-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9996;
+}
+
+
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
@@ -279,20 +313,16 @@ nav {
   animation: blink 1.5s ease-in-out infinite;
 }
 .spectrum-display-inner {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
+  display: block;
+  width: 100%;
   height: 110px;
+  position: relative;
 }
-.spec-bar {
-  flex: 1;
-  border-radius: 2px 2px 0 0;
-  animation: specPulse var(--dur,1.5s) ease-in-out infinite alternate;
-  min-height: 4px;
-}
-@keyframes specPulse {
-  from { height: var(--min-h,20%); }
-  to   { height: var(--max-h,90%); }
+#specCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 4px;
 }
 .freq-labels {
   display: flex;
@@ -701,9 +731,11 @@ footer {
 </head>
 <body>
 
-<canvas id="spectrum-canvas"></canvas>
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<canvas id="buzz-canvas"></canvas>
 
-<!-- NAV -->
+
 <nav>
   <a href="#" class="nav-logo">BVG<span style="color:var(--orange)">.</span></a>
   <ul class="nav-links">
@@ -726,18 +758,10 @@ footer {
     <h1 class="hero-name">Bala Viswanth G</h1>
     <p class="hero-subtitle">Signal Processing · Radar · RF-SoC</p>
     <p class="hero-desc">
-      I design <strong>RF systems and embedded signal processing pipelines</strong> — from SDR-based ionospheric radar and MIMO antenna arrays to ML-based intercept receivers on Xilinx RF-SoC platforms. Turning complex electromagnetic problems into real, deployable systems.
+      I design <strong>Radar systems and embedded signal processing</strong> — from SDR-based ionospheric radar and MIMO antenna arrays to ML-based intercept receivers. Turning complex electromagnetic problems into real, deployable systems.
     </p>
-    <a href="https://doi.org/10.1016/j.asr.2025.04.072" target="_blank" class="pub-badge">
-      <span class="pub-icon">📄</span>
-      <span>
-        <span class="pub-label">Published · Advances in Space Research</span>
-        Advanced Software Programmable Ionosonde (AISP)
-      </span>
-    </a>
     <div class="hero-actions">
       <a href="#projects" class="btn btn-cyan">View Projects ↓</a>
-      <a href="https://www.linkedin.com/in/balaviswanth" target="_blank" class="btn btn-outline">LinkedIn ↗</a>
     </div>
   </div>
   <div class="hero-right">
@@ -746,7 +770,9 @@ footer {
         <span class="spectrum-title">Spectrum Analyzer</span>
         <span class="spectrum-live">Live</span>
       </div>
-      <div class="spectrum-display-inner" id="specBars"></div>
+      <div class="spectrum-display-inner">
+        <canvas id="specCanvas"></canvas>
+      </div>
       <div class="freq-labels">
         <span>700 MHz</span>
         <span>1.8 GHz</span>
@@ -935,7 +961,6 @@ footer {
         <li>Multi-Signal Generator Tool</li>
         <li>Research &amp; Publication</li>
         <li>Team Mentorship</li>
-        <li>Patent Filing</li>
       </ul>
     </div>
   </div>
@@ -952,9 +977,9 @@ footer {
       <p class="contact-desc">Whether it's an RF system design challenge, embedded signal processing, or research collaboration — I'm always interested in hearing about new projects.</p>
     </div>
     <div class="contact-links">
-      <a href="mailto:balaviswanth01@gmail.com" class="btn btn-cyan">Email me ↗</a>
+      <a href="mailto:gl.viswanth@gmail.com" class="btn btn-cyan">Email me ↗</a>
       <a href="https://www.linkedin.com/in/balaviswanth" target="_blank" class="btn btn-outline">LinkedIn ↗</a>
-      <a href="tel:+919952866101" class="btn btn-outline">+91 99528 66101</a>
+      <a href="https://wa.me/919952866101" target="_blank" class="btn btn-outline">WhatsApp ↗</a>
     </div>
   </div>
 </div>
@@ -963,79 +988,344 @@ footer {
   <span class="footer-logo">BVG.</span>
   <span>© 2026 Bala Viswanth G — RF &amp; Embedded Systems Engineer</span>
   <div class="footer-links">
-    <a href="mailto:balaviswanth01@gmail.com">Email</a>
+    <a href="/cdn-cgi/l/email-protection#4426252825322d3733252a302c7475042329252d286a272b29">Email</a>
     <a href="https://www.linkedin.com/in/balaviswanth" target="_blank">LinkedIn</a>
     <a href="#home">Top ↑</a>
   </div>
 </footer>
 
-<script>
-// Animated spectrum background canvas
-const canvas = document.getElementById('spectrum-canvas');
-const ctx = canvas.getContext('2d');
-let W, H, bars = [];
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ── CUSTOM CURSOR ──
+const cursorDot = document.getElementById('cursor');
+const cursorRing = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
 
-function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  initBars();
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursorDot.style.transform = `translate(${mx - 5}px, ${my - 5}px)`;
+});
+
+function animateRing() {
+  rx += (mx - rx - 19) * 0.1;
+  ry += (my - ry - 19) * 0.1;
+  cursorRing.style.transform = `translate(${rx}px, ${ry}px)`;
+  requestAnimationFrame(animateRing);
 }
-function initBars() {
-  bars = [];
-  const count = Math.floor(W / 6);
-  for (let i = 0; i < count; i++) {
-    bars.push({
-      h: Math.random() * H * 0.38 + 18,
-      targetH: Math.random() * H * 0.38 + 18,
-      speed: Math.random() * 0.025 + 0.008,
-      hue: [185, 200, 25, 330, 95][Math.floor(Math.random() * 5)]
-    });
-  }
-}
-function drawBg() {
-  ctx.clearRect(0, 0, W, H);
-  const bw = W / bars.length;
-  bars.forEach((b, i) => {
-    b.h += (b.targetH - b.h) * b.speed;
-    if (Math.abs(b.h - b.targetH) < 1) b.targetH = Math.random() * H * 0.42 + 14;
-    const x = i * bw;
-    const g = ctx.createLinearGradient(0, H, 0, H - b.h);
-    g.addColorStop(0, `hsla(${b.hue}, 100%, 62%, 0.85)`);
-    g.addColorStop(1, `hsla(${b.hue + 35}, 100%, 72%, 0)`);
-    ctx.fillStyle = g;
-    ctx.fillRect(x, H - b.h, bw - 1, b.h);
+animateRing();
+
+document.querySelectorAll('a, button, .project-card, .exp-card, .skill-group').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursorRing.style.width = '64px';
+    cursorRing.style.height = '64px';
+    cursorRing.style.borderColor = 'var(--orange)';
+    cursorRing.style.opacity = '0.7';
+    cursorDot.style.background = 'var(--orange)';
+    cursorDot.style.boxShadow = '0 0 10px var(--orange), 0 0 20px rgba(255,107,43,0.4)';
   });
-  requestAnimationFrame(drawBg);
-}
-window.addEventListener('resize', resize);
-resize();
-drawBg();
+  el.addEventListener('mouseleave', () => {
+    cursorRing.style.width = '38px';
+    cursorRing.style.height = '38px';
+    cursorRing.style.borderColor = 'var(--cyan)';
+    cursorRing.style.opacity = '0.5';
+    cursorDot.style.background = 'var(--cyan)';
+    cursorDot.style.boxShadow = '0 0 10px var(--cyan), 0 0 20px rgba(0,220,255,0.4)';
+  });
+});
 
-// Hero spectrum mini-bars
-const specContainer = document.getElementById('specBars');
-const colors = [
-  '#00dcff','#0af','#2af','#4cf','#6ef','#ff6b2b','#f83','#fb5',
-  '#ffe227','#39ff14','#2fe','#0fc','#ff2d78','#f54','#f76',
-  '#00dcff','#0af','#ff6b2b','#ffe227','#39ff14',
-  '#00dcff','#4cf','#ff6b2b','#f83','#39ff14',
-  '#ff2d78','#f54','#39ff14','#2fe','#00dcff',
-];
-for (let i = 0; i < 55; i++) {
-  const bar = document.createElement('div');
-  bar.className = 'spec-bar';
-  const minH = Math.random() * 25 + 8;
-  const maxH = Math.random() * 55 + 30;
-  const dur = (Math.random() * 1.4 + 0.6).toFixed(2);
-  const delay = (Math.random() * 1.2).toFixed(2);
-  bar.style.cssText = `
-    --min-h:${minH}%;--max-h:${maxH}%;--dur:${dur}s;
-    animation-delay:-${delay}s;
-    background:${colors[i % colors.length]};
-    opacity:0.72;
-    box-shadow:0 0 5px ${colors[i % colors.length]}55;
-  `;
-  specContainer.appendChild(bar);
+// ── RF WAVE RINGS from cursor ──
+const buzzCanvas = document.getElementById('buzz-canvas');
+const bctx = buzzCanvas.getContext('2d');
+let BW, BH;
+
+function resizeBuzz() {
+  BW = buzzCanvas.width = window.innerWidth;
+  BH = buzzCanvas.height = window.innerHeight;
 }
+resizeBuzz();
+window.addEventListener('resize', resizeBuzz);
+
+// RF wave ring colors — cyan primary, with occasional orange/green harmonics
+const rfColors = ['#00dcff', '#00dcff', '#00dcff', '#39ff14', '#ff6b2b'];
+
+class RFRing {
+  constructor(x, y, fast) {
+    this.x = x;
+    this.y = y;
+    this.r = 4;
+    this.maxR = fast ? 80 + Math.random() * 60 : 40 + Math.random() * 40;
+    this.speed = fast ? 2.2 + Math.random() * 1.5 : 1.2 + Math.random() * 0.8;
+    this.life = 1;
+    this.color = rfColors[Math.floor(Math.random() * rfColors.length)];
+    this.lineWidth = fast ? 1.5 : 1;
+    // Slight ellipse to mimic EM wave propagation
+    this.scaleY = 0.55 + Math.random() * 0.3;
+  }
+  update() {
+    this.r += this.speed;
+    this.life = Math.max(0, 1 - this.r / this.maxR);
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(1, this.scaleY);
+    ctx.beginPath();
+    ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+    ctx.strokeStyle = this.color;
+    ctx.globalAlpha = this.life * 0.7;
+    ctx.lineWidth = this.lineWidth;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.restore();
+  }
+  get dead() { return this.life <= 0; }
+}
+
+// Sine wave trail that follows the cursor path
+const trail = [];
+const MAX_TRAIL = 32;
+
+// Periodic pulse — emit rings at regular intervals like a transmitter beacon
+let pulseTimer = 0;
+const PULSE_INTERVAL = 22; // frames between auto-pulses
+
+const rings = [];
+let lastMx2 = 0, lastMy2 = 0;
+
+document.addEventListener('mousemove', e => {
+  const dx = e.clientX - lastMx2, dy = e.clientY - lastMy2;
+  const vel = Math.sqrt(dx * dx + dy * dy);
+  lastMx2 = e.clientX; lastMy2 = e.clientY;
+
+  // Trail
+  trail.unshift({ x: e.clientX, y: e.clientY });
+  if (trail.length > MAX_TRAIL) trail.pop();
+
+  // Spawn extra rings on fast movement (like EM burst)
+  if (vel > 8) {
+    const count = Math.min(Math.floor(vel / 8), 4);
+    for (let i = 0; i < count; i++) rings.push(new RFRing(mx, my, true));
+  }
+});
+
+function drawBuzz() {
+  bctx.clearRect(0, 0, BW, BH);
+
+  // Beacon pulse — steady rings emitted from cursor position
+  pulseTimer++;
+  if (pulseTimer >= PULSE_INTERVAL) {
+    rings.push(new RFRing(mx, my, false));
+    pulseTimer = 0;
+  }
+
+  // Draw sine-wave trail
+  if (trail.length > 2) {
+    bctx.save();
+    bctx.beginPath();
+    bctx.moveTo(trail[0].x, trail[0].y);
+    for (let i = 1; i < trail.length - 1; i++) {
+      const cx = (trail[i].x + trail[i + 1].x) / 2;
+      const cy = (trail[i].y + trail[i + 1].y) / 2;
+      bctx.quadraticCurveTo(trail[i].x, trail[i].y, cx, cy);
+    }
+    bctx.strokeStyle = '#00dcff';
+    bctx.lineWidth = 1.5;
+    bctx.shadowColor = '#00dcff';
+    bctx.shadowBlur = 8;
+    // Fade trail from bright at head to transparent at tail
+    const grad = bctx.createLinearGradient(
+      trail[0].x, trail[0].y,
+      trail[trail.length - 1].x, trail[trail.length - 1].y
+    );
+    grad.addColorStop(0, 'rgba(0,220,255,0.55)');
+    grad.addColorStop(1, 'rgba(0,220,255,0)');
+    bctx.strokeStyle = grad;
+    bctx.globalAlpha = 1;
+    bctx.stroke();
+    bctx.restore();
+  }
+
+  // Update & draw RF rings
+  for (let i = rings.length - 1; i >= 0; i--) {
+    rings[i].update();
+    rings[i].draw(bctx);
+    if (rings[i].dead) rings.splice(i, 1);
+  }
+
+  requestAnimationFrame(drawBuzz);
+}
+drawBuzz();
+
+
+
+// ── RF SPECTRUM ANALYZER ──
+const specCanvas = document.getElementById('specCanvas');
+const sctx = specCanvas.getContext('2d');
+const BAR_COUNT = 128;
+
+// Noise floor level (0–1 scale, lower = lower on screen)
+const NOISE_FLOOR = 0.08;
+
+// RF signal carriers: { bin, strength, label, drift }
+// Bins map to frequency labels on screen (0=700MHz ... 127=24GHz)
+const carriers = [
+  { bin: 8,  strength: 0.82, drift: 0.3, bw: 2  },  // 700 MHz LTE
+  { bin: 22, strength: 0.91, drift: 0.2, bw: 3  },  // 1.8 GHz GSM
+  { bin: 36, strength: 0.95, drift: 0.15, bw: 4 },  // 2.4 GHz WiFi carrier
+  { bin: 40, strength: 0.55, drift: 0.4, bw: 2  },  // 2.4 GHz sideband
+  { bin: 44, strength: 0.50, drift: 0.4, bw: 2  },  // 2.4 GHz sideband
+  { bin: 78, strength: 0.88, drift: 0.2, bw: 5  },  // 5.8 GHz
+  { bin: 120,strength: 0.75, drift: 0.5, bw: 3  },  // 24 GHz radar
+];
+
+// Per-bin state
+const bins = Array.from({ length: BAR_COUNT }, (_, i) => ({
+  val: NOISE_FLOOR + Math.random() * 0.04,
+  peak: 0,
+  peakTimer: 0,
+  noisePhase: Math.random() * Math.PI * 2,
+  noiseSpeed: 0.03 + Math.random() * 0.04,
+}));
+
+// Carrier phase oscillation (slight wobble like real AGC)
+carriers.forEach(c => { c.phase = Math.random() * Math.PI * 2; });
+
+// Interference burst event
+let burstBin = -1, burstStrength = 0, burstTimer = 0;
+let globalFrame = 0;
+
+// Sweep line (like real SA sweep)
+let sweepX = 0;
+
+function resizeSpecCanvas() {
+  const rect = specCanvas.parentElement.getBoundingClientRect();
+  specCanvas.width = rect.width;
+  specCanvas.height = rect.height;
+}
+
+function drawSpecAnalyzer() {
+  resizeSpecCanvas();
+  const W = specCanvas.width, H = specCanvas.height;
+  globalFrame++;
+
+  // Dark background
+  sctx.fillStyle = 'rgba(4,13,26,0.92)';
+  sctx.fillRect(0, 0, W, H);
+
+  // ── Grid ──
+  sctx.strokeStyle = 'rgba(0,220,255,0.07)';
+  sctx.lineWidth = 1;
+  // Horizontal dB lines
+  for (let g = 0; g <= 4; g++) {
+    const y = H - (g / 4) * H;
+    sctx.beginPath(); sctx.moveTo(0, y); sctx.lineTo(W, y); sctx.stroke();
+  }
+  // Vertical freq markers
+  [8, 22, 36, 78, 120].forEach(b => {
+    const x = (b / BAR_COUNT) * W;
+    sctx.beginPath(); sctx.moveTo(x, 0); sctx.lineTo(x, H); sctx.stroke();
+  });
+
+  // ── Random interference burst ──
+  burstTimer--;
+  if (burstTimer <= 0) {
+    burstBin = Math.floor(Math.random() * BAR_COUNT);
+    burstStrength = 0.4 + Math.random() * 0.45;
+    burstTimer = 180 + Math.random() * 300; // every 3–8 seconds
+  }
+
+  // ── Compute target dBm for each bin ──
+  const bw = W / BAR_COUNT;
+
+  // Build signal profile
+  const targets = new Float32Array(BAR_COUNT);
+  for (let i = 0; i < BAR_COUNT; i++) {
+    // Noise floor with slight brownian motion
+    bins[i].noisePhase += bins[i].noiseSpeed;
+    targets[i] = NOISE_FLOOR + Math.sin(bins[i].noisePhase) * 0.025 + Math.random() * 0.018;
+  }
+
+  // Add carriers with gaussian skirt (like real signal bandwidth)
+  carriers.forEach(c => {
+    c.phase += 0.012 + Math.random() * 0.004;
+    const s = c.strength + Math.sin(c.phase) * c.drift * 0.06; // AGC wobble
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const dist = Math.abs(i - c.bin);
+      if (dist <= c.bw * 4) {
+        // Gaussian rolloff — sharp spike at center, quick falloff
+        const gauss = Math.exp(-(dist * dist) / (2 * c.bw * c.bw));
+        targets[i] = Math.max(targets[i], s * gauss);
+      }
+    }
+  });
+
+  // Add interference burst
+  if (burstStrength > 0.05) {
+    burstStrength *= 0.985;
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const dist = Math.abs(i - burstBin);
+      if (dist < 6) {
+        targets[i] = Math.max(targets[i], burstStrength * Math.exp(-(dist*dist)/8));
+      }
+    }
+  }
+
+  // ── Draw bars ──
+  for (let i = 0; i < BAR_COUNT; i++) {
+    // Smooth toward target
+    bins[i].val += (targets[i] - bins[i].val) * 0.18;
+    const bh = bins[i].val * H;
+    const x = i * bw;
+
+    // Color: noise=dim cyan, signal=bright cyan, hot peaks=white
+    const intensity = bins[i].val;
+    let color;
+    if (intensity > 0.7)      color = '#ffffff';
+    else if (intensity > 0.45) color = '#00dcff';
+    else if (intensity > 0.2)  color = '#0088bb';
+    else                       color = '#004455';
+
+    const grad = sctx.createLinearGradient(0, H, 0, H - bh);
+    grad.addColorStop(0,   intensity > 0.4 ? 'rgba(0,220,255,0.9)' : 'rgba(0,80,100,0.5)');
+    grad.addColorStop(0.6, intensity > 0.4 ? 'rgba(0,180,255,0.6)' : 'rgba(0,60,80,0.3)');
+    grad.addColorStop(1,   intensity > 0.7 ? 'rgba(255,255,255,0.9)' : 'rgba(0,220,255,0.2)');
+
+    sctx.fillStyle = grad;
+    sctx.shadowColor = intensity > 0.5 ? '#00dcff' : 'transparent';
+    sctx.shadowBlur = intensity > 0.5 ? 10 : 0;
+    sctx.fillRect(x + 0.5, H - bh, Math.max(bw - 1, 1), bh);
+
+    // Peak hold line
+    if (bh > bins[i].peak) { bins[i].peak = bh; bins[i].peakTimer = 0; }
+    bins[i].peakTimer++;
+    if (bins[i].peakTimer > 35) bins[i].peak -= 0.8;
+    bins[i].peak = Math.max(bins[i].peak, bh);
+
+    if (bins[i].peak > 3) {
+      sctx.fillStyle = bins[i].peak / H > 0.6 ? '#ffffff' : '#00dcff';
+      sctx.globalAlpha = 0.9;
+      sctx.shadowColor = '#00dcff';
+      sctx.shadowBlur = 6;
+      sctx.fillRect(x + 0.5, H - bins[i].peak, Math.max(bw - 1, 1), 1.5);
+      sctx.globalAlpha = 1;
+    }
+    sctx.shadowBlur = 0;
+  }
+
+  // ── Sweep line ──
+  sweepX = (sweepX + 1.2) % W;
+  const sweepGrad = sctx.createLinearGradient(sweepX - 18, 0, sweepX, 0);
+  sweepGrad.addColorStop(0, 'rgba(0,220,255,0)');
+  sweepGrad.addColorStop(1, 'rgba(0,220,255,0.18)');
+  sctx.fillStyle = sweepGrad;
+  sctx.fillRect(sweepX - 18, 0, 18, H);
+  sctx.strokeStyle = 'rgba(0,220,255,0.5)';
+  sctx.lineWidth = 1;
+  sctx.beginPath(); sctx.moveTo(sweepX, 0); sctx.lineTo(sweepX, H); sctx.stroke();
+
+  requestAnimationFrame(drawSpecAnalyzer);
+}
+requestAnimationFrame(drawSpecAnalyzer);
 </script>
 </body>
 </html>
