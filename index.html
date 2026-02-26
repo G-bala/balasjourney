@@ -768,7 +768,17 @@ footer {
     <div class="spectrum-display">
       <div class="spectrum-header">
         <span class="spectrum-title">Spectrum Analyzer</span>
-        <span class="spectrum-live">Live</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button id="micBtn" style="
+            font-family:'IBM Plex Mono',monospace;
+            font-size:9px;letter-spacing:0.12em;text-transform:uppercase;
+            background:rgba(0,220,255,0.08);border:1px solid rgba(0,220,255,0.3);
+            color:var(--cyan);padding:4px 10px;border-radius:3px;cursor:pointer;
+            transition:all 0.2s;display:flex;align-items:center;gap:6px;">
+            🎙 MIC OFF
+          </button>
+          <span class="spectrum-live" id="liveLabel">Simulated</span>
+        </div>
       </div>
       <div class="spectrum-display-inner">
         <canvas id="specCanvas"></canvas>
@@ -1158,9 +1168,52 @@ drawBuzz();
 
 
 
-// ── RF SPECTRUM ANALYZER ──
+// ── RF SPECTRUM ANALYZER (Mic + Simulated) ──
 const specCanvas = document.getElementById('specCanvas');
 const sctx = specCanvas.getContext('2d');
+
+// ── MIC SETUP ──
+let micActive = false;
+let analyserNode = null;
+let micFFTData = null;
+const micBtn = document.getElementById('micBtn');
+const liveLabel = document.getElementById('liveLabel');
+
+micBtn.addEventListener('click', async () => {
+  if (!micActive) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(stream);
+      analyserNode = audioCtx.createAnalyser();
+      analyserNode.fftSize = 256;
+      analyserNode.smoothingTimeConstant = 0.8;
+      source.connect(analyserNode);
+      micFFTData = new Uint8Array(analyserNode.frequencyBinCount);
+      micActive = true;
+      micBtn.innerHTML = '🎙 MIC ON';
+      micBtn.style.background = 'rgba(57,255,20,0.12)';
+      micBtn.style.borderColor = 'rgba(57,255,20,0.5)';
+      micBtn.style.color = 'var(--green)';
+      liveLabel.textContent = 'Live · Mic';
+      liveLabel.style.color = 'var(--green)';
+    } catch(e) {
+      micBtn.innerHTML = '🎙 DENIED';
+      micBtn.style.color = 'var(--pink)';
+      micBtn.style.borderColor = 'var(--pink)';
+    }
+  } else {
+    micActive = false;
+    analyserNode = null;
+    micFFTData = null;
+    micBtn.innerHTML = '🎙 MIC OFF';
+    micBtn.style.background = 'rgba(0,220,255,0.08)';
+    micBtn.style.borderColor = 'rgba(0,220,255,0.3)';
+    micBtn.style.color = 'var(--cyan)';
+    liveLabel.textContent = 'Simulated';
+    liveLabel.style.color = '';
+  }
+});
 const BAR_COUNT = 128;
 
 // Noise floor level (0–1 scale, lower = lower on screen)
@@ -1226,46 +1279,59 @@ function drawSpecAnalyzer() {
     sctx.beginPath(); sctx.moveTo(x, 0); sctx.lineTo(x, H); sctx.stroke();
   });
 
-  // ── Random interference burst ──
-  burstTimer--;
-  if (burstTimer <= 0) {
-    burstBin = Math.floor(Math.random() * BAR_COUNT);
-    burstStrength = 0.4 + Math.random() * 0.45;
-    burstTimer = 180 + Math.random() * 300; // every 3–8 seconds
+  // ── Random interference burst (simulated only) ──
+  if (!micActive) {
+    burstTimer--;
+    if (burstTimer <= 0) {
+      burstBin = Math.floor(Math.random() * BAR_COUNT);
+      burstStrength = 0.4 + Math.random() * 0.45;
+      burstTimer = 180 + Math.random() * 300;
+    }
   }
 
   // ── Compute target dBm for each bin ──
   const bw = W / BAR_COUNT;
-
-  // Build signal profile
   const targets = new Float32Array(BAR_COUNT);
-  for (let i = 0; i < BAR_COUNT; i++) {
-    // Noise floor with slight brownian motion
-    bins[i].noisePhase += bins[i].noiseSpeed;
-    targets[i] = NOISE_FLOOR + Math.sin(bins[i].noisePhase) * 0.025 + Math.random() * 0.018;
-  }
 
-  // Add carriers with gaussian skirt (like real signal bandwidth)
-  carriers.forEach(c => {
-    c.phase += 0.012 + Math.random() * 0.004;
-    const s = c.strength + Math.sin(c.phase) * c.drift * 0.06; // AGC wobble
+  if (micActive && analyserNode && micFFTData) {
+    // ── MIC MODE: real FFT from microphone ──
+    analyserNode.getByteFrequencyData(micFFTData);
+    const micBins = micFFTData.length; // 128
     for (let i = 0; i < BAR_COUNT; i++) {
-      const dist = Math.abs(i - c.bin);
-      if (dist <= c.bw * 4) {
-        // Gaussian rolloff — sharp spike at center, quick falloff
-        const gauss = Math.exp(-(dist * dist) / (2 * c.bw * c.bw));
-        targets[i] = Math.max(targets[i], s * gauss);
-      }
+      // Map our BAR_COUNT bins to mic FFT bins
+      const micIdx = Math.floor((i / BAR_COUNT) * micBins);
+      const raw = micFFTData[micIdx] / 255;
+      // Add noise floor so it looks like a real SA even in silence
+      targets[i] = NOISE_FLOOR + raw * 0.92 + Math.random() * 0.015;
     }
-  });
-
-  // Add interference burst
-  if (burstStrength > 0.05) {
-    burstStrength *= 0.985;
+  } else {
+    // ── SIMULATED MODE ──
     for (let i = 0; i < BAR_COUNT; i++) {
-      const dist = Math.abs(i - burstBin);
-      if (dist < 6) {
-        targets[i] = Math.max(targets[i], burstStrength * Math.exp(-(dist*dist)/8));
+      bins[i].noisePhase += bins[i].noiseSpeed;
+      targets[i] = NOISE_FLOOR + Math.sin(bins[i].noisePhase) * 0.025 + Math.random() * 0.018;
+    }
+
+    // Carriers with gaussian skirt
+    carriers.forEach(c => {
+      c.phase += 0.012 + Math.random() * 0.004;
+      const s = c.strength + Math.sin(c.phase) * c.drift * 0.06;
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const dist = Math.abs(i - c.bin);
+        if (dist <= c.bw * 4) {
+          const gauss = Math.exp(-(dist * dist) / (2 * c.bw * c.bw));
+          targets[i] = Math.max(targets[i], s * gauss);
+        }
+      }
+    });
+
+    // Interference burst
+    if (burstStrength > 0.05) {
+      burstStrength *= 0.985;
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const dist = Math.abs(i - burstBin);
+        if (dist < 6) {
+          targets[i] = Math.max(targets[i], burstStrength * Math.exp(-(dist*dist)/8));
+        }
       }
     }
   }
