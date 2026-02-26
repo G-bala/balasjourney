@@ -784,11 +784,11 @@ footer {
         <canvas id="specCanvas"></canvas>
       </div>
       <div class="freq-labels">
-        <span>700 MHz</span>
-        <span>1.8 GHz</span>
-        <span>2.4 GHz</span>
-        <span>5.8 GHz</span>
-        <span>24 GHz</span>
+        <span>85 Hz</span>
+        <span>118 Hz</span>
+        <span>170 Hz</span>
+        <span>213 Hz</span>
+        <span>255 Hz</span>
       </div>
       <div class="spec-readout">
         <div class="readout-item">
@@ -1294,14 +1294,22 @@ function drawSpecAnalyzer() {
   const targets = new Float32Array(BAR_COUNT);
 
   if (micActive && analyserNode && micFFTData) {
-    // ── MIC MODE: real FFT from microphone ──
+    // ── MIC MODE: real FFT from microphone, 85–255 Hz only ──
     analyserNode.getByteFrequencyData(micFFTData);
-    const micBins = micFFTData.length; // 128
+    const sampleRate = 44100;
+    const nyquist = sampleRate / 2;
+    const totalBins = micFFTData.length; // 128
+
+    // Convert Hz to FFT bin index
+    const hzToBin = hz => Math.round((hz / nyquist) * totalBins);
+    const binLow  = hzToBin(85);
+    const binHigh = hzToBin(255);
+    const rangeLen = binHigh - binLow;
+
     for (let i = 0; i < BAR_COUNT; i++) {
-      // Map our BAR_COUNT bins to mic FFT bins
-      const micIdx = Math.floor((i / BAR_COUNT) * micBins);
-      const raw = micFFTData[micIdx] / 255;
-      // Add noise floor so it looks like a real SA even in silence
+      // Map display bars to the 85–255 Hz slice only
+      const micIdx = binLow + Math.floor((i / BAR_COUNT) * rangeLen);
+      const raw = micFFTData[Math.min(micIdx, totalBins - 1)] / 255;
       targets[i] = NOISE_FLOOR + raw * 0.92 + Math.random() * 0.015;
     }
   } else {
