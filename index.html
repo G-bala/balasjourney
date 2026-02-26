@@ -315,7 +315,7 @@ nav {
 .spectrum-display-inner {
   display: block;
   width: 100%;
-  height: 110px;
+  height: 200px;
   position: relative;
 }
 #specCanvas {
@@ -790,24 +790,6 @@ footer {
         <span>213 Hz</span>
         <span>255 Hz</span>
       </div>
-      <div class="spec-readout">
-        <div class="readout-item">
-          <div class="readout-label">Platform</div>
-          <div class="readout-value rv-cyan">ZCU208</div>
-        </div>
-        <div class="readout-item">
-          <div class="readout-label">Processing</div>
-          <div class="readout-value rv-orange">14 sec</div>
-        </div>
-        <div class="readout-item">
-          <div class="readout-label">Domain</div>
-          <div class="readout-value rv-green">Radar / SDR</div>
-        </div>
-        <div class="readout-item">
-          <div class="readout-label">Patent</div>
-          <div class="readout-value rv-yellow">Filed ✓</div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -1186,10 +1168,10 @@ micBtn.addEventListener('click', async () => {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioCtx.createMediaStreamSource(stream);
       analyserNode = audioCtx.createAnalyser();
-      analyserNode.fftSize = 256;
-      analyserNode.smoothingTimeConstant = 0.8;
+      analyserNode.fftSize = 8192; // High resolution — gives 4096 bins, ~5.4 Hz per bin at 44100 Hz sample rate
+      analyserNode.smoothingTimeConstant = 0.82;
       source.connect(analyserNode);
-      micFFTData = new Uint8Array(analyserNode.frequencyBinCount);
+      micFFTData = new Uint8Array(analyserNode.frequencyBinCount); // 4096 bins
       micActive = true;
       micBtn.innerHTML = '🎙 MIC ON';
       micBtn.style.background = 'rgba(57,255,20,0.12)';
@@ -1197,6 +1179,8 @@ micBtn.addEventListener('click', async () => {
       micBtn.style.color = 'var(--green)';
       liveLabel.textContent = 'Live · Mic';
       liveLabel.style.color = 'var(--green)';
+      // Store actual sample rate for accurate Hz mapping
+      window._micSampleRate = audioCtx.sampleRate;
     } catch(e) {
       micBtn.innerHTML = '🎙 DENIED';
       micBtn.style.color = 'var(--pink)';
@@ -1296,20 +1280,21 @@ function drawSpecAnalyzer() {
   if (micActive && analyserNode && micFFTData) {
     // ── MIC MODE: real FFT from microphone, 85–255 Hz only ──
     analyserNode.getByteFrequencyData(micFFTData);
-    const sampleRate = 44100;
+    const sampleRate = window._micSampleRate || 44100;
     const nyquist = sampleRate / 2;
-    const totalBins = micFFTData.length; // 128
+    const totalBins = micFFTData.length; // 4096 with fftSize=8192
 
-    // Convert Hz to FFT bin index
-    const hzToBin = hz => Math.round((hz / nyquist) * totalBins);
-    const binLow  = hzToBin(85);
-    const binHigh = hzToBin(255);
-    const rangeLen = binHigh - binLow;
+    // Each bin covers: nyquist / totalBins Hz (e.g. 22050/4096 ≈ 5.4 Hz/bin)
+    const hzPerBin = nyquist / totalBins;
+    const binLow  = Math.round(85  / hzPerBin);
+    const binHigh = Math.round(255 / hzPerBin);
+    const rangeLen = binHigh - binLow; // ~31 bins covering 85–255 Hz
 
     for (let i = 0; i < BAR_COUNT; i++) {
-      // Map display bars to the 85–255 Hz slice only
-      const micIdx = binLow + Math.floor((i / BAR_COUNT) * rangeLen);
-      const raw = micFFTData[Math.min(micIdx, totalBins - 1)] / 255;
+      // Interpolate across the 85–255 Hz slice, stretched across all display bars
+      const frac = i / (BAR_COUNT - 1);
+      const micIdx = Math.min(Math.round(binLow + frac * rangeLen), totalBins - 1);
+      const raw = micFFTData[micIdx] / 255;
       targets[i] = NOISE_FLOOR + raw * 0.92 + Math.random() * 0.015;
     }
   } else {
@@ -1345,20 +1330,15 @@ function drawSpecAnalyzer() {
   }
 
   // ── Draw bars ──
+  let peakBarIdx = 0, peakBarVal = 0;
   for (let i = 0; i < BAR_COUNT; i++) {
-    // Smooth toward target
     bins[i].val += (targets[i] - bins[i].val) * 0.18;
     const bh = bins[i].val * H;
     const x = i * bw;
 
-    // Color: noise=dim cyan, signal=bright cyan, hot peaks=white
-    const intensity = bins[i].val;
-    let color;
-    if (intensity > 0.7)      color = '#ffffff';
-    else if (intensity > 0.45) color = '#00dcff';
-    else if (intensity > 0.2)  color = '#0088bb';
-    else                       color = '#004455';
+    if (bins[i].val > peakBarVal) { peakBarVal = bins[i].val; peakBarIdx = i; }
 
+    const intensity = bins[i].val;
     const grad = sctx.createLinearGradient(0, H, 0, H - bh);
     grad.addColorStop(0,   intensity > 0.4 ? 'rgba(0,220,255,0.9)' : 'rgba(0,80,100,0.5)');
     grad.addColorStop(0.6, intensity > 0.4 ? 'rgba(0,180,255,0.6)' : 'rgba(0,60,80,0.3)');
@@ -1369,7 +1349,7 @@ function drawSpecAnalyzer() {
     sctx.shadowBlur = intensity > 0.5 ? 10 : 0;
     sctx.fillRect(x + 0.5, H - bh, Math.max(bw - 1, 1), bh);
 
-    // Peak hold line
+    // Per-bar peak hold line
     if (bh > bins[i].peak) { bins[i].peak = bh; bins[i].peakTimer = 0; }
     bins[i].peakTimer++;
     if (bins[i].peakTimer > 35) bins[i].peak -= 0.8;
@@ -1384,6 +1364,59 @@ function drawSpecAnalyzer() {
       sctx.globalAlpha = 1;
     }
     sctx.shadowBlur = 0;
+  }
+
+  // ── Dominant Peak Annotation ──
+  if (peakBarVal > NOISE_FLOOR + 0.05) {
+    const peakX = peakBarIdx * bw + bw / 2;
+    const peakY = H - bins[peakBarIdx].peak;
+    const frac = peakBarIdx / (BAR_COUNT - 1);
+    const peakHz = Math.round(85 + frac * (255 - 85));
+    const peakLabel = micActive ? `${peakHz} Hz` : `PEAK`;
+
+    // Dashed vertical drop line
+    sctx.save();
+    sctx.setLineDash([3, 4]);
+    sctx.strokeStyle = 'rgba(255,226,39,0.65)';
+    sctx.lineWidth = 1;
+    sctx.beginPath();
+    sctx.moveTo(peakX, peakY + 6);
+    sctx.lineTo(peakX, H);
+    sctx.stroke();
+    sctx.setLineDash([]);
+
+    // Glowing dot at peak tip
+    sctx.beginPath();
+    sctx.arc(peakX, peakY, 4.5, 0, Math.PI * 2);
+    sctx.fillStyle = '#ffe227';
+    sctx.shadowColor = '#ffe227';
+    sctx.shadowBlur = 18;
+    sctx.fill();
+    sctx.shadowBlur = 0;
+
+    // Label pill
+    const labelW = 62, labelH = 19;
+    let labelX = peakX - labelW / 2;
+    labelX = Math.max(2, Math.min(W - labelW - 2, labelX));
+    const labelY = Math.max(4, peakY - 28);
+
+    sctx.fillStyle = 'rgba(4,13,26,0.88)';
+    sctx.strokeStyle = 'rgba(255,226,39,0.8)';
+    sctx.lineWidth = 1;
+    sctx.beginPath();
+    sctx.roundRect(labelX, labelY, labelW, labelH, 3);
+    sctx.fill();
+    sctx.stroke();
+
+    sctx.fillStyle = '#ffe227';
+    sctx.font = 'bold 9px "IBM Plex Mono", monospace';
+    sctx.textAlign = 'center';
+    sctx.shadowColor = '#ffe227';
+    sctx.shadowBlur = 8;
+    sctx.fillText(peakLabel, labelX + labelW / 2, labelY + 13);
+    sctx.shadowBlur = 0;
+    sctx.textAlign = 'left';
+    sctx.restore();
   }
 
   // ── Sweep line ──
