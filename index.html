@@ -691,11 +691,12 @@ footer {
   <div class="projects-grid">
 
     <!-- Project 1 — ML Intercept Receiver -->
-    <div class="project-card card-cyan card-span-7">
+    <a href="https://www.balasjourney.in/ml-intercept-receiver.html" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:contents;">
+    <div class="project-card card-cyan card-span-7" style="cursor:pointer;">
       <div class="card-corner"></div>
       <div class="project-freq">▲ RF-SoC · Xilinx ZCU208 · ML</div>
       <div class="project-num">01</div>
-      <h3 class="project-title">ML-Based Intercept Receiver</h3>
+      <h3 class="project-title">ML-Based Intercept Receiver <span style="font-size:12px;opacity:0.6;">↗</span></h3>
       <p class="project-desc">Design and development of a machine-learning-based intercept receiver running on the Xilinx ZCU208 RF-SoC platform, achieving a dramatic reduction in processing latency through hardware-software co-optimization.</p>
       <ul class="project-highlights">
         <li>Reduced end-to-end processing time from 4 minutes to <strong style="color:var(--cyan)">14 seconds</strong> using multicore processing and SIMD.</li>
@@ -710,6 +711,7 @@ footer {
         <span class="tag">Machine Learning</span>
       </div>
     </div>
+    </a>
 
     <!-- Project 2 — AISP -->
     <div class="project-card card-orange card-span-5">
@@ -830,7 +832,7 @@ footer {
       <p class="contact-desc">Whether it's an RF system design challenge, embedded signal processing, or research collaboration — I'm always interested in hearing about new projects.</p>
     </div>
     <div class="contact-links">
-      <a href="mailto:gl.viswanth@gmail.com" class="btn btn-cyan">Email me ↗</a>
+      <a href="/cdn-cgi/l/email-protection#53343f7d253a2024323d273b13343e323a3f7d303c3e" class="btn btn-cyan">Email me ↗</a>
       <a href="https://www.linkedin.com/in/balaviswanth" target="_blank" class="btn btn-outline">LinkedIn ↗</a>
       <a href="https://wa.me/919952866101" target="_blank" class="btn btn-outline">WhatsApp ↗</a>
     </div>
@@ -841,13 +843,13 @@ footer {
   <span class="footer-logo">BVG.</span>
   <span>© 2026 Bala Viswanth G — RF &amp; Embedded Systems Engineer</span>
   <div class="footer-links">
-    <a href="mailto:gl.viswanth@gmail.com">Email</a>
+    <a href="/cdn-cgi/l/email-protection#88efe4a6fee1fbffe9e6fce0c8efe5e9e1e4a6ebe7e5">Email</a>
     <a href="https://www.linkedin.com/in/balaviswanth" target="_blank">LinkedIn</a>
     <a href="#home">Top ↑</a>
   </div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
 // ── CUSTOM CURSOR ──
 const cursorDot = document.getElementById('cursor');
 const cursorRing = document.getElementById('cursorRing');
@@ -1295,11 +1297,16 @@ function drawSpecAnalyzer() {
   sctx.fillRect(sweepX - 18, 0, 18, H);
   sctx.strokeStyle = 'rgba(0,220,255,0.5)';
   sctx.lineWidth = 1;
-  sctx.beginPath(); sctx.moveTo(sweepX, 0); sctx.lineTo(sweepX, H); sctx.stroke();
+  // Sweep line stroke
+  sctx.beginPath();
+  sctx.moveTo(sweepX, 0);
+  sctx.lineTo(sweepX, H);
+  sctx.stroke();
 
   requestAnimationFrame(drawSpecAnalyzer);
 }
-requestAnimationFrame(drawSpecAnalyzer);
+drawSpecAnalyzer();
+
 </script>
 </body>
 </html>
